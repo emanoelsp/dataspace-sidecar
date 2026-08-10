@@ -4,8 +4,22 @@ import { logStats } from "@/lib/access-log-store"
 import { listEquipment, equipmentStats } from "@/lib/equipment-store"
 
 export async function GET(_request: NextRequest) {
+  const all = listEquipment() // all registered equipment, regardless of status
+
   const equipmentChecks = await Promise.all(
-    listEquipment().filter(e => e.status === "active").map(async (e) => {
+    all.map(async (e) => {
+      // Disabled equipment shows as "offline" without a live probe
+      if (e.status === "disabled") {
+        return {
+          type: e.id,
+          name: e.name,
+          url: e.displayHost ?? e.baseUrl,
+          source: e.source,
+          registered: true,
+          status: "offline" as const,
+          responseTimeMs: 0,
+        }
+      }
       const start = Date.now()
       try {
         const res = await fetch(`${e.baseUrl}/api/data`, {
@@ -15,9 +29,10 @@ export async function GET(_request: NextRequest) {
         return {
           type: e.id,
           name: e.name,
-          url: e.baseUrl,
+          url: e.displayHost ?? e.baseUrl,
           source: e.source,
-          status: res.ok ? "online" : "error",
+          registered: true,
+          status: res.ok ? "online" as const : "error" as const,
           httpStatus: res.status,
           responseTimeMs: Date.now() - start,
         }
@@ -25,9 +40,10 @@ export async function GET(_request: NextRequest) {
         return {
           type: e.id,
           name: e.name,
-          url: e.baseUrl,
+          url: e.displayHost ?? e.baseUrl,
           source: e.source,
-          status: "offline",
+          registered: true,
+          status: "offline" as const,
           responseTimeMs: Date.now() - start,
         }
       }

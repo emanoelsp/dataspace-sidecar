@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import type { SidecarToken } from "@/lib/token-store"
 import type { AccessLogEntry } from "@/lib/access-log-store"
 
@@ -54,8 +54,21 @@ function EquipmentNode({ eq, type }: { eq: EquipmentStatus | undefined; type: st
   )
 }
 
+function Arrow({ label, sublabel, color = "emerald" }: { label: string; sublabel: string; color?: string }) {
+  const c = color === "sky" ? { line: "bg-sky-900", text: "text-sky-700" } : { line: "bg-emerald-900", text: "text-emerald-700" }
+  return (
+    <div className="flex flex-col items-center gap-1 px-1 text-xs select-none">
+      <span className={`font-mono ${c.text}`}>{label}</span>
+      <div className={`h-px w-8 ${c.line}`} />
+      <span className="font-mono text-slate-700">{sublabel}</span>
+    </div>
+  )
+}
+
 function TopologySection({ equipment }: { equipment: EquipmentStatus[] }) {
-  const byType = (t: string) => equipment.find(e => e.type === t)
+  // Only show equipment that has registered with this sidecar
+  const registered = equipment // status/route already returns only registered ones
+
   return (
     <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 mb-6">
       <p className="text-xs text-slate-500 uppercase tracking-wider mb-4 font-semibold">
@@ -99,42 +112,38 @@ function TopologySection({ equipment }: { equipment: EquipmentStatus[] }) {
             <span>🏭</span>
             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Factory Perimeter — Fog Tier · Data Plane</span>
           </div>
-          <span className="text-xs font-mono text-emerald-800">LAN · 192.168.0.x</span>
+          <span className="text-xs font-mono text-emerald-800">LAN · registered equipment only</span>
         </div>
 
-        {/* Three-node flow: CNC ←― Sidecar ―← Press */}
-        <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2">
-          {/* CNC */}
-          <EquipmentNode eq={byType("cnc")} type="cnc" />
-
-          {/* Arrow CNC ← Sidecar */}
-          <div className="flex flex-col items-center gap-1 px-1 text-slate-600 text-xs select-none">
-            <span className="font-mono text-emerald-700 text-xs">data ◄</span>
-            <div className="h-px w-8 bg-emerald-900" />
-            <span className="font-mono text-slate-700 text-xs">proxy</span>
+        {registered.length === 0 ? (
+          <p className="text-center text-slate-600 text-sm py-4">No equipment registered with this sidecar yet.</p>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {registered.map((eq, i) => (
+              <React.Fragment key={eq.type}>
+                <EquipmentNode eq={eq} type={eq.type} />
+                {i < registered.length - 1 && (
+                  <Arrow label="data ◄" sublabel="proxy" color={i % 2 === 0 ? "emerald" : "sky"} />
+                )}
+              </React.Fragment>
+            ))}
+            {/* Sidecar PEP always in the middle when there are equipment */}
+            {registered.length > 0 && (
+              <>
+                <Arrow label="Bearer ◄" sublabel="token" color="sky" />
+                <div className="rounded-xl border border-indigo-700 bg-indigo-900/30 p-3 flex flex-col items-center gap-1 text-center">
+                  <span className="text-2xl">🔀</span>
+                  <p className="text-xs font-bold text-indigo-300">Sidecar PEP</p>
+                  <p className="text-xs font-mono text-indigo-500">localhost:3100</p>
+                  <p className="text-xs text-indigo-700 leading-snug">Token validation<br />at the edge</p>
+                </div>
+              </>
+            )}
           </div>
-
-          {/* Sidecar PEP */}
-          <div className="rounded-xl border border-indigo-700 bg-indigo-900/30 p-3 flex flex-col items-center gap-1 text-center">
-            <span className="text-2xl">🔀</span>
-            <p className="text-xs font-bold text-indigo-300">Sidecar PEP</p>
-            <p className="text-xs font-mono text-indigo-500">localhost:3100</p>
-            <p className="text-xs text-indigo-700 leading-snug">Token validation<br />at the edge</p>
-          </div>
-
-          {/* Arrow Sidecar ← Press */}
-          <div className="flex flex-col items-center gap-1 px-1 text-slate-600 text-xs select-none">
-            <span className="font-mono text-sky-700 text-xs">Bearer ◄</span>
-            <div className="h-px w-8 bg-sky-900" />
-            <span className="font-mono text-slate-700 text-xs">token</span>
-          </div>
-
-          {/* Press */}
-          <EquipmentNode eq={byType("press")} type="press" />
-        </div>
+        )}
 
         <p className="text-center text-xs text-emerald-900 mt-4">
-          Data flows P2P within factory LAN — never leaves the perimeter · Token verified locally by Sidecar
+          Only equipment registered with this sidecar is shown · Data flows P2P within LAN
         </p>
       </div>
     </div>
@@ -213,6 +222,7 @@ function LogRow({ entry }: { entry: AccessLogEntry }) {
       </td>
       <td className="px-3 py-1.5 text-slate-300">{entry.dataClientName}</td>
       <td className="px-3 py-1.5 text-slate-400">{entry.dataOwnerName}</td>
+      <td className="px-3 py-1.5 text-emerald-400 font-mono">{entry.equipmentHost ?? "—"}</td>
       <td className="px-3 py-1.5">
         <span className="text-slate-300">{EQ_ICON[entry.equipmentType]} {entry.equipmentType}</span>
       </td>
@@ -274,7 +284,7 @@ export default function SidecarDashboard() {
 
   const st = status
   const online = st?.equipment.filter(e => e.status === "online").length ?? 0
-  const total = st?.equipment.length ?? 3
+  const total = st?.equipment.length ?? 0
   const successRate = st?.access.last24h
     ? Math.round((st.access.successful / st.access.last24h) * 100)
     : 100
@@ -322,6 +332,25 @@ export default function SidecarDashboard() {
 
       {/* Network Topology */}
       <TopologySection equipment={st?.equipment ?? []} />
+
+      {/* Frota de CPS — LAN da fábrica (IPs mascarados) */}
+      {(st?.equipment?.length ?? 0) > 0 && (
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 mb-6">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-4 font-semibold">Frota de CPS — LAN da fábrica ({st!.equipment.length})</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {st!.equipment.map(e => (
+              <div key={e.type} className={`rounded-lg border p-2 ${e.status === "online" ? "bg-emerald-900/15 border-emerald-800/50" : "bg-slate-800/40 border-slate-700"}`}>
+                <div className="flex items-center gap-1.5">
+                  <span>{EQ_ICON[e.type] ?? "📦"}</span>
+                  <span className="text-xs font-semibold text-white truncate">{e.name}</span>
+                </div>
+                <p className="text-xs font-mono text-emerald-400 mt-1">{e.url}</p>
+                <p className={`text-xs ${e.status === "online" ? "text-emerald-500" : "text-red-400"}`}>● {e.status} · {e.responseTimeMs}ms</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-slate-900 rounded-xl p-1 w-fit">
@@ -376,7 +405,7 @@ export default function SidecarDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                  {["Time", "Client", "Owner", "Equip.", "Endpoint", "HTTP", "Time (ms)"].map(h => (
+                  {["Time", "Client", "Owner", "IP (LAN)", "Equip.", "Endpoint", "HTTP", "Time (ms)"].map(h => (
                     <th key={h} className="px-3 py-2.5 text-left font-medium">{h}</th>
                   ))}
                 </tr>
@@ -384,7 +413,7 @@ export default function SidecarDashboard() {
               <tbody>
                 {log.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-slate-600">
+                    <td colSpan={8} className="px-3 py-8 text-center text-slate-600">
                       No access events logged yet.
                     </td>
                   </tr>
