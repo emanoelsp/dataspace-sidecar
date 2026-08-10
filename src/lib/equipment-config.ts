@@ -9,6 +9,10 @@ export function getEquipmentUrl(id: string): string | undefined {
   return e && e.status === "active" ? e.baseUrl : undefined
 }
 
+export function getEquipmentDisplayHost(id: string): string | undefined {
+  return getEquipment(id)?.displayHost
+}
+
 export function getEquipmentName(id: string): string | undefined {
   return getEquipment(id)?.name
 }

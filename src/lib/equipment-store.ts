@@ -8,6 +8,7 @@ export interface SidecarEquipment {
   id: string              // slug único: "cnc", "press", "robot", "agv01"...
   name: string
   baseUrl: string         // app do CPS que expõe /api/data e /api/aas
+  displayHost?: string    // IP/host exibido na LAN (mascaramento); o proxy usa baseUrl
   eclassIrdi?: string     // classe ECLASS do equipamento
   connectorId?: string    // conector do dataspace que registrou o CPS
   dataOwnerId?: string
@@ -22,6 +23,7 @@ export type RegisterEquipmentInput = {
   id: string
   name: string
   baseUrl: string
+  displayHost?: string
   eclassIrdi?: string
   connectorId?: string
   dataOwnerId?: string

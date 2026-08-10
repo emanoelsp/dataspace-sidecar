@@ -15,6 +15,7 @@ export interface AccessLogEntry {
   assetId: string
   assetName: string
   equipmentType: string
+  equipmentHost?: string  // IP/host (LAN) do CPS — mascaramento
   dataClientId: string
   dataClientName: string
   dataOwnerId: string

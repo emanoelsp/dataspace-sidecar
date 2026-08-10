@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getTokenByValue, recordUsage } from "@/lib/token-store"
 import { addEntry } from "@/lib/access-log-store"
-import { getEquipmentUrl, isValidEquipment, knownEquipmentIds } from "@/lib/equipment-config"
+import { getEquipmentUrl, getEquipmentDisplayHost, isValidEquipment, knownEquipmentIds } from "@/lib/equipment-config"
 
 // O sidecar vive no perímetro da fábrica; a UI do Dataspace (nuvem) apenas
 // renderiza — o fetch parte do navegador dentro da LAN. CORS liberado para
@@ -155,6 +155,7 @@ export async function GET(
     assetId: tokenDoc.assetId,
     assetName: tokenDoc.assetName,
     equipmentType: equipment,
+    equipmentHost: getEquipmentDisplayHost(equipment),
     dataClientId: tokenDoc.dataClientId,
     dataClientName: tokenDoc.dataClientName,
     dataOwnerId: tokenDoc.dataOwnerId,
