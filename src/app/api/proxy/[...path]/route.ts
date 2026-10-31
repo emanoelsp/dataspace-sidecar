@@ -6,6 +6,7 @@
  *   GET /api/proxy/cnc/aas        Authorization: Bearer acc_xxx
  *   GET /api/proxy/press/data     Authorization: Bearer acc_xxx
  *   GET /api/proxy/robot/aas?submodel=Nameplate
+ *   GET /api/proxy/cpslai1/operational  → recurso registrado (path no CPS, ex.: /api/v1/operational)
  *
  * Fluxo:
  *   1. Extrai e valida o Bearer token
@@ -17,7 +18,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getTokenByValue, recordUsage } from "@/lib/token-store"
 import { addEntry } from "@/lib/access-log-store"
-import { getEquipmentUrl, getEquipmentDisplayHost, isValidEquipment, knownEquipmentIds } from "@/lib/equipment-config"
+import { getEquipmentUrl, getEquipmentDisplayHost, getEquipmentResources, isValidEquipment, knownEquipmentIds } from "@/lib/equipment-config"
+import { upstreamPath, availableEndpoints } from "@/lib/resource-path"
 
 // O sidecar vive no perímetro da fábrica; a UI do Dataspace (nuvem) apenas
 // renderiza — o fetch parte do navegador dentro da LAN. CORS liberado para
@@ -66,8 +68,10 @@ export async function GET(
     return json({ error: `Unknown equipment: ${equipment}`, known: knownEquipmentIds() }, { status: 404 })
   }
 
-  if (!["data", "aas"].includes(endpoint)) {
-    return json({ error: `Invalid endpoint: ${endpoint}. Use 'data' or 'aas'` }, { status: 400 })
+  const resources = getEquipmentResources(equipment)
+  const targetPath = upstreamPath(endpoint, resources)
+  if (!targetPath) {
+    return json({ error: `Invalid endpoint: ${endpoint}`, available: availableEndpoints(resources) }, { status: 400 })
   }
 
   // ── Validação do token ────────────────────────────────────────────────────
@@ -123,7 +127,7 @@ export async function GET(
   // ── Proxy para o equipamento ──────────────────────────────────────────────
   const equipmentBase = getEquipmentUrl(equipment)!
   const qs = request.nextUrl.search
-  const targetUrl = `${equipmentBase}/api/${endpoint}${qs}`
+  const targetUrl = `${equipmentBase}${targetPath}${qs}`
 
   const startMs = Date.now()
   let statusCode = 503

@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import type { SidecarResource } from "@/lib/resource-path"
 
 const DATA_DIR = path.join(process.cwd(), ".data")
 const EQUIPMENT_FILE = path.join(DATA_DIR, "equipment.json")
@@ -13,6 +14,7 @@ export interface SidecarEquipment {
   connectorId?: string    // conector do dataspace que registrou o CPS
   dataOwnerId?: string
   dataOwnerName?: string
+  resources?: SidecarResource[] // recursos extras do CPS: /api/proxy/{id}/{resource.id} → resource.path
   source: "env" | "dataspace"
   status: "active" | "disabled"
   registeredAt: string
@@ -28,6 +30,7 @@ export type RegisterEquipmentInput = {
   connectorId?: string
   dataOwnerId?: string
   dataOwnerName?: string
+  resources?: SidecarResource[]
 }
 
 function ensureDataDir() {

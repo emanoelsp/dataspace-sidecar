@@ -68,8 +68,39 @@ para os consumidores buscarem os dados pelo PEP.
 | GET/POST/PATCH | `/api/equipment` | registro dinâmico de CPS (admin secret) |
 | POST | `/api/tokens` | recebe token do Dataspace (admin secret) |
 | PATCH | `/api/tokens/:id` | revoga token (admin secret) |
-| GET | `/api/proxy/{slug}/{data\|aas}` | **consumo P2P** — valida o Bearer token e faz proxy ao CPS |
+| GET | `/api/proxy/{slug}/{data\|aas\|resourceId}` | **consumo P2P** — valida o Bearer token e faz proxy ao CPS |
 | GET | `/api/access-log` | trilha de acessos (admin secret) |
+
+## Recursos de dados do CPS
+
+Um CPS pode expor vários recursos na mesma API (ex.: 5 catálogos). O Dataspace
+registra cada um com `id` e `path` no `POST /api/equipment`:
+
+```json
+{ "id": "cpslai1", "name": "CPS-LAI-01", "baseUrl": "http://127.0.0.1:3101",
+  "resources": [
+    { "id": "operational", "name": "Operational Data", "path": "/api/v1/operational" },
+    { "id": "hcm-episodes", "name": "HCM Episodes", "path": "/api/v1/hcm/episodes" }
+  ] }
+```
+
+O consumidor chama `GET /api/proxy/cpslai1/operational` (query string repassada) e
+o PEP encaminha para `{baseUrl}/api/v1/operational`. O token só passa se o
+contrato liberou aquele recurso (`permissions` contém o `id`). `data` e `aas`
+continuam mapeados para `/api/data` e `/api/aas`.
+
+## Segredo do Sidecar
+
+Para CPS registrados via M2M, o `SIDECAR_ADMIN_SECRET` é **o segredo da tua
+organização**, não um valor global: no primeiro `POST /api/m2m/register` da
+organização, envie o valor do `.env.local` no header `X-Sidecar-Secret` (≥ 32
+caracteres) — ou deixe o Dataspace gerar e copie `sidecarSecret` da resposta.
+
+## Testes
+
+```bash
+npm test   # node --test (Node 23.6+, que executa .ts nativamente)
+```
 
 ## Relação com os outros repositórios
 - **Control plane (nuvem):** `dataspace_v2` → `dataspaceapp` (catálogo, governança, tokens).

@@ -6,7 +6,8 @@
  *
  *   GET  /api/equipment            → lista os CPS registrados (LAN)
  *   POST /api/equipment            → registra/atualiza um CPS (admin secret)
- *        { id, name, baseUrl, eclassIrdi?, connectorId?, dataOwnerId?, dataOwnerName? }
+ *        { id, name, baseUrl, eclassIrdi?, connectorId?, dataOwnerId?, dataOwnerName?,
+ *          resources?: [{ id, name?, path }] }   // ex.: { id: "operational", path: "/api/v1/operational" }
  *   PATCH /api/equipment           → habilita/desabilita: { id, status } (admin secret)
  */
 
@@ -19,6 +20,7 @@ import {
   isValidSlug,
   type RegisterEquipmentInput,
 } from "@/lib/equipment-store"
+import { parseResources } from "@/lib/resource-path"
 
 export async function GET() {
   return NextResponse.json({ equipment: listEquipment() })
@@ -48,7 +50,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid baseUrl" }, { status: 400 })
   }
 
-  const equipment = registerEquipment(body as RegisterEquipmentInput)
+  const resources = parseResources(body.resources)
+  if (typeof resources === "string") {
+    return NextResponse.json({ error: resources }, { status: 400 })
+  }
+
+  const equipment = registerEquipment({ ...(body as RegisterEquipmentInput), resources })
   return NextResponse.json({ ok: true, equipment })
 }
 

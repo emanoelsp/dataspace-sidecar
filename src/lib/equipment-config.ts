@@ -3,6 +3,7 @@
 // conector/ativo, com seed dos 3 equipamentos legados via variáveis de ambiente.
 
 import { getEquipment, listEquipment } from "@/lib/equipment-store"
+import type { SidecarResource } from "@/lib/resource-path"
 
 export function getEquipmentUrl(id: string): string | undefined {
   const e = getEquipment(id)
@@ -11,6 +12,10 @@ export function getEquipmentUrl(id: string): string | undefined {
 
 export function getEquipmentDisplayHost(id: string): string | undefined {
   return getEquipment(id)?.displayHost
+}
+
+export function getEquipmentResources(id: string): SidecarResource[] {
+  return getEquipment(id)?.resources ?? []
 }
 
 export function getEquipmentName(id: string): string | undefined {

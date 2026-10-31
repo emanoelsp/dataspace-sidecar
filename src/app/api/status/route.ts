@@ -21,11 +21,14 @@ export async function GET(_request: NextRequest) {
         }
       }
       const start = Date.now()
+      const probe = (path: string) => fetch(`${e.baseUrl}${path}`, {
+        headers: { Authorization: "Bearer demo" },
+        signal: AbortSignal.timeout(2500),
+      })
       try {
-        const res = await fetch(`${e.baseUrl}/api/data`, {
-          headers: { Authorization: "Bearer demo" },
-          signal: AbortSignal.timeout(2500),
-        })
+        let res = await probe("/api/data")
+        // CPS que só expõe recursos próprios (sem /api/data): sonda o primeiro recurso
+        if (res.status === 404 && e.resources?.length) res = await probe(e.resources[0].path)
         return {
           type: e.id,
           name: e.name,
